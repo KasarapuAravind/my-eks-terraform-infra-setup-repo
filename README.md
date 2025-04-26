@@ -1,0 +1,1 @@
+This repo containes all EKS terraform infra code to deploy EKs cluster and other components in AWS.
