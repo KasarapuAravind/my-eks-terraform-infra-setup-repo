@@ -3,6 +3,12 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "cluster_version" {
+  description = "EKS Kubernetes version"
+  type        = string
+}
+
+
 variable "region" {
   description = "AWS Region"
   type        = string

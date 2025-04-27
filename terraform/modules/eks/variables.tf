@@ -1,4 +1,9 @@
 variable "cluster_name" {}
+variable "cluster_version" {
+  description = "EKS Kubernetes version"
+  type        = string
+}
+
 variable "subnet_ids" {
   type = list(string)
 }

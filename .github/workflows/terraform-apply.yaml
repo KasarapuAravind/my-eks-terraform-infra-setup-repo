@@ -1,4 +1,4 @@
-name: Terraform Deploy
+name: Terraform Apply
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  terraform:
+  terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     environment: dev
@@ -25,15 +25,16 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/environments/dev
+
       - name: Terraform Init
         working-directory: terraform/environments/dev
         run: terraform init -backend-config="key=dev/terraform.tfstate"
 
-      - name: Terraform Plan
+      - name: Terraform Apply
         working-directory: terraform/environments/dev
-        run: terraform plan -var-file="dev.tfvars"
-
-      - name: Terraform destroy
-        working-directory: terraform/environments/dev
-        run: terraform destroy -auto-approve -var-file="dev.tfvars"
-
+        run: terraform apply tfplan
