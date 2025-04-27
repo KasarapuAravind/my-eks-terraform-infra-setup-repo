@@ -14,10 +14,12 @@ module "vpc" {
 
 module "eks" {
   source = "../../modules/eks"
-
   cluster_name = var.cluster_name
-  subnet_ids   = module.vpc.private_subnet_ids
   cluster_version = var.cluster_version
+  support_type            = var.support_type
+  subnet_ids   = module.vpc.private_subnet_ids
+  worker_node_cidr_blocks = module.vpc.private_subnet_cidrs
+  vpc_id         = module.vpc.vpc_id
 
   vpc_cni_version = var.vpc_cni_version
   coredns_version = var.coredns_version

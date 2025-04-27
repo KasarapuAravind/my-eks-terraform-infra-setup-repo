@@ -8,6 +8,10 @@ variable "cluster_version" {
   type        = string
 }
 
+variable "support_type" {
+  description = "Upgrade support type for the EKS cluster - STANDARD or EXTENDED"
+  type        = string
+}
 
 variable "region" {
   description = "AWS Region"

@@ -7,8 +7,17 @@ resource "aws_eks_cluster" "this" {
     authentication_mode = "API"
   }
 
+  kubernetes_network_config {
+    ip_family = "ipv4" # we'll discuss separately below
+  }
+
+  upgrade_policy {
+    support_type = var.support_type
+    }
+
   vpc_config {
     subnet_ids = var.subnet_ids
+    security_group_ids      = [aws_security_group.eks_control_plane.id]
     endpoint_private_access = true
     endpoint_public_access  = false
   }
@@ -107,3 +116,31 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_driver_attach" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEBSCSIDriverPolicy"
   role       = aws_iam_role.ebs_csi_driver.name
 }
+
+## EKs Cluster SG for communication between eks controlplane and nodes
+resource "aws_security_group" "eks_control_plane" {
+  name        = "${var.cluster_name}-control-plane-sg"
+  description = "Security group for EKS control plane communication"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "Allow worker nodes to communicate with control plane"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.worker_node_cidr_blocks
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-eks-control-plane"
+  }
+}
+
