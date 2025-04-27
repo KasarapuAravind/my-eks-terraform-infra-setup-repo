@@ -25,7 +25,7 @@ This repository is built to follow production-grade best practices including mod
 ## 📂 Repository Structure
 
 ```plaintext
-.eks-infra-repo/
+.my-eks-terraform-infra-setup-repo/
 ├── .github/
 │   └── workflows/
 │       └── terraform-plan.yaml
