@@ -30,6 +30,11 @@ jobs:
         with:
           name: tfplan
           path: terraform/environments/dev
+      
+      - name: Unzip tfplan
+        run: |
+          unzip terraform/environments/dev/tfplan.zip -d terraform/environments/dev/
+
 
       - name: Terraform Init
         working-directory: terraform/environments/dev
