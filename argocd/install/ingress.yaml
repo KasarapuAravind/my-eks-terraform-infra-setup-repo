@@ -8,12 +8,12 @@
 #     alb.ingress.kubernetes.io/scheme: internet-facing     # or internal, depending on your security
 #     alb.ingress.kubernetes.io/target-type: ip
 #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-#     alb.ingress.kubernetes.io/certificate-arn: <your-acm-certificate-arn>  # 👈 Your ACM TLS cert ARN
+#     alb.ingress.kubernetes.io/certificate-arn: <your-acm-certificate-arn>  # Your ACM TLS cert ARN
 #     alb.ingress.kubernetes.io/ssl-redirect: '443'
 #     alb.ingress.kubernetes.io/backend-protocol: HTTPS
 # spec:
 #   rules:
-#     - host: argocd.<your-domain>.com    # 👈 You will set up Route53 DNS for this
+#     - host: argocd.<your-domain>.com    # You will set up Route53 DNS for this
 #       http:
 #         paths:
 #           - path: /
