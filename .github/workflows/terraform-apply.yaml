@@ -11,13 +11,13 @@ jobs:
 
   plan:
     name: Terraform Plan
+    environment: dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        environment: dev
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
