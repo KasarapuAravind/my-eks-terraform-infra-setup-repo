@@ -1,0 +1,49 @@
+name: ArgoCD Bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  bootstrap-argocd:
+    name: Bootstrap ArgoCD
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install kubectl matching EKS version
+        run: |
+          curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name my-dev-eks-cluster
+
+      - name: Install ArgoCD namespace
+        run: |
+          kubectl apply -f argocd/install/namespace.yaml
+
+      - name: Install ArgoCD core components dynamically
+        run: |
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+
+      # (Optional) Expose ArgoCD Server (via LoadBalancer ingress.yaml)
+      # - name: Install ArgoCD Ingress (Optional)
+      #   run: |
+      #     kubectl apply -f argocd/install/ingress.yaml

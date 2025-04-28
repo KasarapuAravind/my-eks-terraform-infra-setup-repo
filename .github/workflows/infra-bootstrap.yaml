@@ -1,0 +1,98 @@
+name: EKS Infra + ArgoCD Bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  vpc:
+    name: Provision VPC
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init (VPC)
+        working-directory: terraform/environments/dev
+        run: terraform init -backend-config="key=dev/terraform.tfstate"
+
+      - name: Terraform Plan VPC
+        working-directory: terraform/environments/dev
+        run: terraform plan -var-file="dev.tfvars" -target=module.vpc
+
+      - name: Terraform Apply VPC
+        working-directory: terraform/environments/dev
+        run: terraform apply -auto-approve -var-file="dev.tfvars" -target=module.vpc
+
+
+  eks-cluster:
+    name: Provision EKS Cluster
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: vpc
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init (EKS)
+        working-directory: terraform/environments/dev
+        run: terraform init -backend-config="key=dev/terraform.tfstate"
+
+      - name: Terraform Plan EKS
+        working-directory: terraform/environments/dev
+        run: terraform plan -var-file="dev.tfvars" -target=module.eks
+
+      - name: Terraform Apply EKS
+        working-directory: terraform/environments/dev
+        run: terraform apply -auto-approve -var-file="dev.tfvars" -target=module.eks
+
+
+  argocd:
+    name: Bootstrap ArgoCD
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: eks-cluster
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name dev-eks-cluster
+
+      - name: Install ArgoCD Namespace
+        run: |
+          kubectl apply -f argocd/install/namespace.yaml
+
+      - name: Install ArgoCD core components dynamically
+        run: |
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
