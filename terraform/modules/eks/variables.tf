@@ -1,6 +1,12 @@
 variable "cluster_name" {}
+
 variable "cluster_version" {
   description = "EKS Kubernetes version"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment (dev, prod, test)"
   type        = string
 }
 

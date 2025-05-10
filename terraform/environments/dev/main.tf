@@ -20,6 +20,7 @@ module "eks" {
   subnet_ids   = module.vpc.private_subnet_ids
   worker_node_cidr_blocks = module.vpc.private_subnet_cidrs
   vpc_id         = module.vpc.vpc_id
+  environment        = "dev"
 
   vpc_cni_version = var.vpc_cni_version
   coredns_version = var.coredns_version

@@ -144,3 +144,79 @@ resource "aws_security_group" "eks_control_plane" {
   }
 }
 
+# Zero-Size Managed Node Group (Bootstrap Node Group)
+resource "aws_eks_node_group" "bootstrap_ng" {
+  cluster_name    = aws_eks_cluster.this.name
+  node_role_arn   = aws_iam_role.eks_worker_node_role.arn
+  node_group_name = "${var.cluster_name}-bootstrap-ng"
+
+  scaling_config {
+    desired_size = 0
+    min_size     = 0
+    max_size     = 1
+  }
+
+  instance_types = ["t3.medium"]  # A small instance just for bootstrap
+  disk_size      = 20
+  ami_type       = "AL2_x86_64"   # Amazon Linux 2
+
+  subnet_ids = var.subnet_ids
+
+  tags = {
+    Name        = "${var.cluster_name}-bootstrap-ng"
+    Environment = var.environment
+  }
+
+  depends_on = [aws_eks_cluster.this]
+}
+
+# Karpenter IRSA (IAM Role for Service Account)
+resource "aws_iam_role" "karpenter_irsa" {
+  name = "${var.cluster_name}-karpenter-irsa"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Federated = aws_eks_cluster.this.identity[0].oidc[0].issuer
+      },
+      Action = "sts:AssumeRoleWithWebIdentity",
+      Condition = {
+        StringEquals = {
+          "${replace(aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:karpenter:karpenter"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_policy" "karpenter_policy" {
+  name        = "${var.cluster_name}-karpenter-policy"
+  description = "IAM Policy for Karpenter with EC2 and Autoscaling Permissions"
+  policy      = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:CreateLaunchTemplate",
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "autoscaling:CreateOrUpdateTags",
+          "autoscaling:DescribeAutoScalingGroups"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_policy_attach" {
+  role       = aws_iam_role.karpenter_irsa.name
+  policy_arn = aws_iam_policy.karpenter_policy.arn
+}
+
+
+
