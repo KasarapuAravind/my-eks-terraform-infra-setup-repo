@@ -151,9 +151,9 @@ resource "aws_eks_node_group" "bootstrap_ng" {
   node_group_name = "${var.cluster_name}-bootstrap-ng"
 
   scaling_config {
-    desired_size = 0
-    min_size     = 0
-    max_size     = 1
+    desired_size = 1
+    min_size     = 1
+    max_size     = 2
   }
 
   instance_types = ["t3.medium"]  # A small instance just for bootstrap
@@ -171,8 +171,8 @@ resource "aws_eks_node_group" "bootstrap_ng" {
 }
 
 # Karpenter IRSA (IAM Role for Service Account)
-resource "aws_iam_role" "karpenter_irsa" {
-  name = "${var.cluster_name}-karpenter-irsa"
+resource "aws_iam_role" "karpenter_controller_role" {
+  name = "${var.cluster_name}-karpenter-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -191,10 +191,9 @@ resource "aws_iam_role" "karpenter_irsa" {
   })
 }
 
-resource "aws_iam_policy" "karpenter_policy" {
-  name        = "${var.cluster_name}-karpenter-policy"
-  description = "IAM Policy for Karpenter with EC2 and Autoscaling Permissions"
-  policy      = jsonencode({
+resource "aws_iam_policy" "karpenter_controller_policy" {
+  name = "${var.cluster_name}-karpenter-controller-policy"
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
@@ -205,7 +204,10 @@ resource "aws_iam_policy" "karpenter_policy" {
           "ec2:RunInstances",
           "ec2:TerminateInstances",
           "autoscaling:CreateOrUpdateTags",
-          "autoscaling:DescribeAutoScalingGroups"
+          "autoscaling:DescribeAutoScalingGroups",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
         ],
         Resource = "*"
       }
@@ -213,10 +215,36 @@ resource "aws_iam_policy" "karpenter_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "karpenter_policy_attach" {
-  role       = aws_iam_role.karpenter_irsa.name
-  policy_arn = aws_iam_policy.karpenter_policy.arn
+resource "aws_iam_role_policy_attachment" "karpenter_controller_policy_attach" {
+  role       = aws_iam_role.karpenter_controller_role.name
+  policy_arn = aws_iam_policy.karpenter_controller_policy.arn
 }
 
+resource "aws_iam_role" "karpenter_ec2_node_role" {
+  name = "${var.cluster_name}-karpenter-ec2-node-role"
 
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
 
+resource "aws_iam_role_policy_attachment" "karpenter_ec2_worker_node_policy" {
+  role       = aws_iam_role.karpenter_ec2_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_ec2_ecr_read_policy" {
+  role       = aws_iam_role.karpenter_ec2_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_sqs_queue" "karpenter_interruption_queue" {
+  name = "${var.cluster_name}-karpenter-interruption-queue"
+}
