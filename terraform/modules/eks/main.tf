@@ -245,6 +245,7 @@ resource "aws_iam_role_policy_attachment" "karpenter_ec2_ecr_read_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-resource "aws_sqs_queue" "karpenter_interruption_queue" {
-  name = "${var.cluster_name}-karpenter-interruption-queue"
-}
+# # this is to handle spot instance gracefull termination in karpenter
+# resource "aws_sqs_queue" "karpenter_interruption_queue" {
+#   name = "${var.cluster_name}-karpenter-interruption-queue"
+# }
