@@ -170,6 +170,35 @@ resource "aws_eks_node_group" "bootstrap_ng" {
   depends_on = [aws_eks_cluster.this]
 }
 
+# This node role is for node group for initial karpenter and system pods bootstrap.
+resource "aws_iam_role" "eks_worker_node_role" {
+  name = "${var.cluster_name}-eks-worker-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_eks_policy" {
+  role       = aws_iam_role.eks_worker_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_ecr_policy" {
+  role       = aws_iam_role.eks_worker_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+
 # Karpenter IRSA (IAM Role for Service Account)
 resource "aws_iam_role" "karpenter_controller_role" {
   name = "${var.cluster_name}-karpenter-controller-role"
